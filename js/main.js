@@ -2,7 +2,7 @@
  * MedLead LP
  *  1. 対応のイメージのチップ切り替え
  *  2. 追従ボタンの出し入れ（ファーストビューと相談フォームが見えている間は隠す）
- *  3. フォーム送信（/api/contact へ。成功したら LPAnalytics.lead()）
+ *  3. フォーム送信（/api/contact へ。成功したら LPAnalytics.lead(lead_id)）
  */
 (function () {
   'use strict';
@@ -56,21 +56,36 @@
     }
   }
 
-  /* 3. フォーム送信 -------------------------------------------------------- */
+  /* 3. フォーム送信（/api/contact → メール通知・Canvas登録・Slack通知。成功時に GA4 の generate_lead） */
   var form = document.getElementById('contact-form');
   if (!form) return;
   var errBox = document.getElementById('form-error');
   var done = document.getElementById('form-done');
   var submit = form.querySelector('[type="submit"]');
+  var tel = form.querySelector('[name="tel"]');
+  var sending = false;
+  var submitted = false;
 
   function showError(msg) {
     errBox.textContent = msg;
     errBox.hidden = false;
   }
 
+  // 全角数字・各種ハイフンをそろえ、数字10〜15桁か確認する（サーバー側でも同じ検証をする）
+  function normalizeTel() {
+    tel.value = tel.value.replace(/[０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xfee0); })
+      .replace(/[‐‑‒–—―ー－−]/g, '-').replace(/（/g, '(').replace(/）/g, ')').replace(/＋/g, '+')
+      .replace(/[\s　]+/g, ' ').trim();
+    var digits = tel.value.replace(/\D/g, '').length;
+    tel.setCustomValidity(/^[0-9+\-() ]+$/.test(tel.value) && digits >= 10 && digits <= 15
+      ? '' : '電話番号を10〜15桁の数字で入力してください。');
+  }
+
   form.addEventListener('submit', function (e) {
     e.preventDefault();
+    if (sending || submitted) return;
     errBox.hidden = true;
+    if (tel) normalizeTel();
 
     var firstInvalid = null;
     Array.prototype.forEach.call(form.querySelectorAll('[required]'), function (el) {
@@ -81,15 +96,18 @@
     if (firstInvalid) {
       showError(firstInvalid.type === 'checkbox'
         ? 'プライバシーポリシーへの同意が必要です。'
-        : '必須の項目を正しくご入力ください。');
+        : firstInvalid === tel && tel.value.trim() !== ''
+          ? '電話番号は10〜15桁の数字でご入力ください。'
+          : '必須の項目を正しくご入力ください。');
       firstInvalid.focus();
       return;
     }
 
+    // lp-analytics.js が付けた流入元の hidden field（utm_*・referrer・landing_path・page_url）を含む
     var data = {};
     new FormData(form).forEach(function (v, k) { data[k] = typeof v === 'string' ? v.trim() : v; });
-    data.lp = 'medlead';
 
+    sending = true;
     submit.disabled = true;
     submit.textContent = '送信中…';
 
@@ -99,21 +117,29 @@
       body: JSON.stringify(data)
     }).then(function (res) {
       if (!res.ok) throw new Error('status ' + res.status);
+      return res.json();
+    }).then(function (result) {
+      if (!result || result.ok !== true) throw new Error('送信失敗');
+      submitted = true; // 二重登録を防ぐため、送信後はフォームを閉じたままにする
       form.hidden = true;
       done.hidden = false;
       done.setAttribute('tabindex', '-1');
       done.focus();
-      if (window.LPAnalytics && typeof window.LPAnalytics.lead === 'function') {
-        window.LPAnalytics.lead({ form: 'contact' });
+      // 成功した申込だけを計測。ハニーポットで破棄した送信（lead_id なし）は数えない
+      if (result.lead_id && window.LPAnalytics && typeof window.LPAnalytics.lead === 'function') {
+        try { window.LPAnalytics.lead(result.lead_id); } catch (err) { /* 計測の失敗で再送させない */ }
       }
     }).catch(function () {
       showError('送信できませんでした。時間をおいてもう一度お試しいただくか、info@canvi.co.jp までご連絡ください。');
       submit.disabled = false;
       submit.textContent = '送信する';
+    }).then(function () {
+      sending = false;
     });
   });
 
   form.addEventListener('input', function (e) {
+    if (e.target === tel) tel.setCustomValidity('');
     if (e.target.classList.contains('is-invalid')) e.target.classList.remove('is-invalid');
   });
 })();

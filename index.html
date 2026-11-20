@@ -69,19 +69,13 @@
 }
 </script>
 
-<!-- GA4（MedLeadのプロパティ。本番の独自ドメインでだけ送る） -->
+<!-- Google tag (gtag.js)：MedLeadのLP別プロパティ（STUDIO から引き継ぎ）。統合プロパティ G-94VP2CRKS8 は /js/lp-analytics.js が追加する -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-X2MWLP4VDM"></script>
 <script>
-  (function () {
-    if (location.hostname !== 'medical-rpo.canvi.co.jp') return;
-    var s = document.createElement('script');
-    s.async = true;
-    s.src = 'https://www.googletagmanager.com/gtag/js?id=G-X2MWLP4VDM';
-    document.head.appendChild(s);
-    window.dataLayer = window.dataLayer || [];
-    window.gtag = function () { dataLayer.push(arguments); };
-    gtag('js', new Date());
-    gtag('config', 'G-X2MWLP4VDM');
-  })();
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-X2MWLP4VDM', { lp_name: 'medlead' });
 </script>
 </head>
 <body>
@@ -418,7 +412,7 @@
             <textarea id="f-message" name="message" rows="4" placeholder="サービスへのご質問や、営業・採用・DXのお悩みがあればご記入ください。"></textarea>
           </div>
           <div class="form__agree">
-            <label><input type="checkbox" name="agree" value="yes" required> <a href="https://www.canvi.co.jp/privacypolicy/" target="_blank" rel="noopener">プライバシーポリシー</a>に同意する<span class="req">必須</span></label>
+            <label><input type="checkbox" name="agree" required> <a href="https://www.canvi.co.jp/privacypolicy/" target="_blank" rel="noopener">プライバシーポリシー</a>に同意する<span class="req">必須</span></label>
           </div>
           <p class="form__error" id="form-error" role="alert" hidden></p>
           <div class="form__submit">
@@ -446,7 +440,7 @@
   <a class="follow__btn" href="#contact" tabindex="-1">無料で相談する</a>
 </div>
 
-<script src="/js/lp-analytics.js" data-lp-name="medlead" data-ga-hosts="medical-rpo.canvi.co.jp" defer></script>
+<script src="/js/lp-analytics.js" data-lp-name="medlead"></script>
 <script src="/js/main.js" defer></script>
 </body>
 </html>

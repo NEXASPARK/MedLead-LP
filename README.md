@@ -16,7 +16,7 @@ STUDIO から Vercel の静的サイトへ作り直したもの。内容は `Med
 | `.env.example` | Vercel に登録する環境変数の一覧（値は書かない） |
 | `img/fv-team.jpg` | FVの集合写真（今のSTUDIOの素材をJPEG化・約125KB） |
 | `img/ogp.png` | OGP画像 1200×630 |
-| `favicon.ico`・`apple-touch-icon.png`・`img/favicon-*.png` | **仮のアイコン**。共有ドライブ「各種ロゴ/メドリード」のシンボルロゴで作り直す |
+| `favicon.ico`・`apple-touch-icon.png`・`img/favicon-*.png` | アイコン。STUDIO 時代のファビコン（2つの丸 `#316AC3`・`#B0CBF5` のSVG）から作成（2026-11-20）。`favicon.ico` は16・32・48px、`apple-touch-icon.png` は180pxの白地 |
 | `vercel.json` | `/privacypolicy` → Canvi のプライバシーポリシーへ。送信APIのタイムアウト30秒 |
 
 ## 環境変数
@@ -74,7 +74,7 @@ npm test
 
 1. ~~`api/contact.js` を他LPと同じ構成に~~（2026-11-20 済み）。Vercel に環境変数を登録する（上記「環境変数」）
 2. ~~`js/lp-analytics.js` を正本に~~（2026-11-20 済み。`canvi-lp-analytics/config/lps.json` に追加）
-3. アイコン4点をシンボルロゴから作り直す
+3. ~~アイコン4点をシンボルロゴから作り直す~~（2026-11-20 済み。STUDIO 時代のファビコンの2つの丸から作成）
 4. `sitemap.xml` の `lastmod` を公開日に
 
 ## 移行手順（指示書より）

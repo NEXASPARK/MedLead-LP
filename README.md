@@ -14,7 +14,7 @@ STUDIO から Vercel の静的サイトへ作り直したもの。内容は `Med
 | `img/fv-team.jpg` | FVの集合写真（今のSTUDIOの素材をJPEG化・約125KB） |
 | `img/ogp.png` | OGP画像 1200×630 |
 | `favicon.ico`・`apple-touch-icon.png`・`img/favicon-*.png` | **仮のアイコン**。共有ドライブ「各種ロゴ/メドリード」のシンボルロゴで作り直す |
-| `vercel.json` | `*.vercel.app` → 独自ドメインへ308、`/privacypolicy` → Canvi のプライバシーポリシーへ |
+| `vercel.json` | `/privacypolicy` → Canvi のプライバシーポリシーへ |
 
 ## ローカル確認
 
@@ -35,7 +35,7 @@ npx serve .
 
 1. GitHub の新リポジトリにこのフォルダを置き、Vercel プロジェクトを作成（他LPと同じチーム）。Preview で表示とフォームを確認
 2. `medical-rpo.canvi.co.jp` を Vercel に追加し、DNS を STUDIO → Vercel に切り替え。http→https を確認
-3. `○○.vercel.app` は独自ドメインへ308（`vercel.json` に設定済み）
+3. 独自ドメインへの切り替え後、Vercel の Settings → Domains で `○○.vercel.app` を `medical-rpo.canvi.co.jp` へ308転送にする（切り替え前に設定すると、CSS・画像まで独自ドメインに飛ばされて表示が崩れるため、vercel.json には書かない）
 4. 切り替え確認後、STUDIO の公開を停止（`○○.studio.site` も残さない）。STUDIO のフォーム通知も停止
 5. GTM `GTM-5W7JDC9D` の中身を確認し、必要なタグだけ残す（GA4の二重計測に注意。このサイトには入れていない）
 6. Search Console で再クロール申請・`sitemap.xml` 送信。OGPの見え方を確認

@@ -2,12 +2,6 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "redirects": [
-    {
-      "source": "/:path*",
-      "has": [{ "type": "host", "value": "(?<sub>.*)\\.vercel\\.app" }],
-      "destination": "https://medical-rpo.canvi.co.jp/:path*",
-      "permanent": true
-    },
     { "source": "/privacypolicy", "destination": "https://www.canvi.co.jp/privacypolicy/", "permanent": true },
     { "source": "/index.html", "destination": "/", "permanent": true }
   ],

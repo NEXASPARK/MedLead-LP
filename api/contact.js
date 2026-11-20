@@ -1,125 +1,96 @@
-/*
- * /api/contact（Vercel の関数）MedLead 用の仮版
- *
- * ※ 指示書どおり、本番ではサイヨウ90・テレアポ90 の api/contact.js をそのまま流用してください
- *    （①Canvas へのリード登録 ②Slack #canvi_lp_notify ③info@canvi.co.jp への通知メール）。
- *    このファイルは流用版が入るまでの仮版で、同じ項目を受け取り、次の環境変数がある所だけ送ります。
- *
- *   CANVAS_LEAD_ENDPOINT / CANVAS_API_KEY … Canvas のリード登録API（JSONでPOST）
- *   SLACK_WEBHOOK_URL                     … #canvi_lp_notify の Incoming Webhook
- *   RESEND_API_KEY / MAIL_TO / MAIL_FROM   … 通知メール（Resend）。MAIL_TO の既定は info@canvi.co.jp
- *
- * 受け取る項目：company, name, tel, email, timing, message, agree, _hp, form, lp
- *               ＋ lp-analytics.js が足す utm_*, referrer, landing_path, page_url
- */
-const LP_NAME = 'medlead';
-const REQUIRED = ['company', 'name', 'tel', 'email', 'timing'];
-const MAX_LEN = 2000;
+/** Resend通知・自動返信 → 共通のCanvas登録・Slack通知 → lead_idを返す。 */
+'use strict';
 
-function clean(v) {
-  return String(v == null ? '' : v).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').trim().slice(0, MAX_LEN);
+const lpLeads = require('./_lib/lp-leads.cjs');
+
+// index.html の「採用希望時期」の選択肢と合わせる
+const TIMINGS = ['今すぐに採用したい', '3ヶ月以内に採用したい', '半年以内に採用したい', 'まだ決めていない', '採用以外（営業・DX）の相談'];
+
+function clean(value) {
+  return String(value == null ? '' : value).trim().slice(0, 2000);
 }
 
-async function readBody(req) {
-  if (req.body && typeof req.body === 'object') return req.body;
-  if (typeof req.body === 'string') {
-    try { return JSON.parse(req.body); } catch (e) { return Object.fromEntries(new URLSearchParams(req.body)); }
+async function sendMail(payload) {
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer ' + process.env.RESEND_API_KEY.trim(),
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(7000)
+  });
+  if (!response.ok) {
+    // Resend のエラー内容（未認証ドメインなど）を原因調査のためにログへ残す。APIキーは含まれない
+    const detail = await response.text().catch(() => '');
+    throw new Error('Resend ' + response.status + ' ' + detail.replace(/\s+/g, ' ').slice(0, 300));
   }
-  return {};
 }
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
-    return res.status(405).json({ ok: false, error: 'method_not_allowed' });
+    return res.status(405).json({ ok: false, error: 'method not allowed' });
   }
 
-  const raw = await readBody(req);
-  const d = {};
-  for (const k of Object.keys(raw)) d[k] = clean(raw[k]);
+  const p = req.body || {};
+  if (p._hp) return res.status(200).json({ ok: true });
 
-  // 迷惑送信よけ：隠し欄が埋まっていたら、成功を装って捨てる（他のLPと同じ）
-  if (d._hp) return res.status(200).json({ ok: true });
-
-  const missing = REQUIRED.filter((k) => !d[k]);
-  if (missing.length || !d.agree) {
-    return res.status(400).json({ ok: false, error: 'missing_fields', fields: missing.concat(d.agree ? [] : ['agree']) });
-  }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)) {
-    return res.status(400).json({ ok: false, error: 'invalid_email' });
+  const data = {};
+  ['company', 'name', 'email', 'timing', 'message'].forEach((key) => {
+    data[key] = clean(p[key]);
+  });
+  data.tel = lpLeads.normalizeTel(p.tel);
+  if (!data.company || !data.name || !lpLeads.isValidTel(data.tel) ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email) || !TIMINGS.includes(data.timing) || p.agree !== 'on') {
+    return res.status(400).json({ ok: false, error: 'missing fields' });
   }
 
-  // 「採用以外（営業・DX）の相談」を選んだ場合は、種別として分けて渡す【エンジニアと相談】
-  const inquiryType = /採用以外/.test(d.timing) ? '営業・DXの相談' : '採用の相談';
-
-  const lead = {
-    lp: LP_NAME,
-    form: d.form || 'contact',
-    inquiry_type: inquiryType,
-    company: d.company,
-    name: d.name,
-    tel: d.tel,
-    email: d.email,
-    timing: d.timing,
-    message: d.message,
-    utm_source: d.utm_source, utm_medium: d.utm_medium, utm_campaign: d.utm_campaign,
-    utm_term: d.utm_term, utm_content: d.utm_content,
-    referrer: d.referrer, landing_path: d.landing_path, page_url: d.page_url,
-    received_at: new Date().toISOString()
-  };
-
-  const text = [
-    `【MedLead】お問い合わせ（${inquiryType}）`,
-    `会社名・医院名：${lead.company}`,
-    `お名前：${lead.name}`,
-    `電話番号：${lead.tel}`,
-    `メール：${lead.email}`,
-    `採用希望時期：${lead.timing}`,
-    `その他：${lead.message || '（なし）'}`,
-    `着地：${lead.landing_path || '-'} / 参照元：${lead.referrer || '-'}`,
-    `UTM：${[lead.utm_source, lead.utm_medium, lead.utm_campaign].filter(Boolean).join(' / ') || '-'}`
-  ].join('\n');
-
-  const jobs = [];
-  const env = process.env;
-
-  if (env.CANVAS_LEAD_ENDPOINT) {
-    jobs.push(fetch(env.CANVAS_LEAD_ENDPOINT, {
-      method: 'POST',
-      headers: Object.assign({ 'Content-Type': 'application/json' }, env.CANVAS_API_KEY ? { Authorization: `Bearer ${env.CANVAS_API_KEY}` } : {}),
-      body: JSON.stringify(lead)
-    }).then((r) => { if (!r.ok) throw new Error(`canvas ${r.status}`); }));
-  }
-  if (env.SLACK_WEBHOOK_URL) {
-    jobs.push(fetch(env.SLACK_WEBHOOK_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text })
-    }).then((r) => { if (!r.ok) throw new Error(`slack ${r.status}`); }));
-  }
-  if (env.RESEND_API_KEY && env.MAIL_FROM) {
-    jobs.push(fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.RESEND_API_KEY}` },
-      body: JSON.stringify({
-        from: env.MAIL_FROM,
-        to: (env.MAIL_TO || 'info@canvi.co.jp').split(',').map((s) => s.trim()),
-        reply_to: lead.email,
-        subject: `【MedLead】お問い合わせ：${lead.company} ${lead.name}様`,
-        text
-      })
-    }).then((r) => { if (!r.ok) throw new Error(`mail ${r.status}`); }));
+  const { RESEND_API_KEY, INQUIRY_FROM } = process.env;
+  if (!RESEND_API_KEY || !INQUIRY_FROM) {
+    console.error('contact: RESEND_API_KEY / INQUIRY_FROM is not configured');
+    return res.status(503).json({ ok: false, error: 'not_configured' });
   }
 
-  if (!jobs.length) {
-    console.error('[contact] 送信先の環境変数が1つも設定されていません');
-    return res.status(500).json({ ok: false, error: 'not_configured' });
+  const formLabel = '無料相談フォーム';
+  const items = [
+    ['会社名・医院名', data.company], ['お名前', data.name], ['電話番号', data.tel],
+    ['メールアドレス', data.email], ['採用希望時期', data.timing], ['その他', data.message]
+  ];
+  const details = items.map(([label, value]) => label + '：' + (value || '（未入力）'));
+  const notifyTo = (process.env.INQUIRY_TO || 'info@canvi.co.jp').split(',').map((s) => s.trim()).filter(Boolean);
+
+  try {
+    if (notifyTo.length) {
+      await sendMail({
+        from: INQUIRY_FROM, to: notifyTo, reply_to: data.email,
+        subject: '【MedLead】お問い合わせ：' + data.company.replace(/[\r\n]/g, ' '),
+        text: [
+          'MedLead LPからお問い合わせがありました。', '',
+          ...details, '送信元：' + clean(p.page_url || p.page)
+        ].join('\n')
+      });
+    }
+    await sendMail({
+      from: INQUIRY_FROM, to: [data.email],
+      subject: '【MedLead・受付完了】お問い合わせありがとうございます',
+      text: [
+        data.company, data.name + ' 様', '',
+        'このたびはMedLead（メドリード）へお問い合わせいただき、ありがとうございます。',
+        '以下の内容で受け付けました。担当者より折り返しご連絡いたします。', '',
+        '────────────', ...details, '────────────', '', '※本メールは送信専用です。'
+      ].join('\n')
+    });
+  } catch (err) {
+    console.error('contact: send failed', err.message);
+    return res.status(500).json({ ok: false, error: 'send failed' });
   }
 
-  const results = await Promise.allSettled(jobs);
-  const failed = results.filter((r) => r.status === 'rejected');
-  failed.forEach((f) => console.error('[contact]', f.reason && f.reason.message));
-  // 1か所でも届いていれば受付済みとする（取りこぼしを防ぐため、失敗はログで確認）
-  if (failed.length === results.length) return res.status(502).json({ ok: false, error: 'delivery_failed' });
-  return res.status(200).json({ ok: true });
+  // Canvas・Slackが失敗しても、共通モジュールがログを残し送信成功を返す。
+  const lead = await lpLeads.recordLead({
+    req, body: { ...p, ...data }, lpName: 'medlead',
+    contact: { company: data.company, name: data.name, email: data.email, tel: data.tel },
+    formLabel, items
+  });
+  return res.status(200).json({ ok: true, lead_id: lead.leadId });
 };

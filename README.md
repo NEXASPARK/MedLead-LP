@@ -44,6 +44,20 @@ STUDIO から Vercel の静的サイトへ作り直したもの。内容は `Med
 - 週次レポート・ダッシュボードは `canvi-lp-analytics/lib/ga4.cjs` のホスト対応表で判定します（`medical-rpo.canvi.co.jp` と `medlead-lp.vercel.app`）。
 - `js/lp-analytics.js` と `api/_lib/lp-leads.cjs` は `../canvi-lp-analytics/shared/` の正本を `npm run sync` でコピーしたものです。
 
+## 本番DNS（STUDIO → Vercel の切り替え）
+
+管理先はお名前.com。Vercel プロジェクト `medlead-lp` にドメイン追加済み（2026-11-20）。
+本番デプロイ（このリポジトリと canvi-lp-analytics のマージ）が済んでから、次のとおり変更する（TTLは3600）。
+
+| 操作 | TYPE | ホスト名 | 値 |
+| --- | --- | --- | --- |
+| 削除 | A | `medical-rpo` | `34.111.141.225`（STUDIO） |
+| 追加 | CNAME | `medical-rpo` | `f1b632a46af70511.vercel-dns-016.com` |
+| 追加 | TXT | `_vercel` | `vc-domain-verify=medical-rpo.canvi.co.jp,6757936232329dd6953f` |
+
+- `_vercel` の TXT は他のサブドメイン用の既存レコードを残したまま1件追加する。TXT だけなら先に入れても表示は変わらない
+- 切り替え後、Vercel の Settings → Domains で `medlead-lp.vercel.app` を `medical-rpo.canvi.co.jp` へ308転送にする
+
 ## ローカル確認
 
 ```

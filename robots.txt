@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://medical-rpo.canvi.co.jp/sitemap.xml

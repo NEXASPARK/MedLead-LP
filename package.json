@@ -1,7 +1,7 @@
 {
   "name": "medlead-lp",
   "private": true,
-  "description": "MedLead LP（medical-rpo.canvi.co.jp）。Vercel の静的サイト＋/api/contact",
+  "description": "MedLead LP（medlead.canvi.co.jp）。Vercel の静的サイト＋/api/contact",
   "engines": {
     "node": ">=18"
   },

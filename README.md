@@ -1,4 +1,4 @@
-# MedLead LP（medical-rpo.canvi.co.jp）
+# MedLead LP（medlead.canvi.co.jp）
 
 STUDIO から Vercel の静的サイトへ作り直したもの。内容は `MedLead_LP_修正指示書`（2026-11-15）のとおり。
 
@@ -41,13 +41,30 @@ STUDIO から Vercel の静的サイトへ作り直したもの。内容は `Med
 - GA4：LP別プロパティ `G-X2MWLP4VDM`（STUDIO から引き継ぎ。`index.html` の gtag）と統合プロパティ `G-94VP2CRKS8`（`js/lp-analytics.js` が追加）に並行送信。`lp_name=medlead`（秒速面談と同じ扱い）。
 - イベント：`page_view`、`form_view`、`form_start`、送信成功後の `generate_lead`（`lead_id` 付き）。フォームの入力内容は GA4 に送りません。
 - UTM・参照元・着地パスを保存し、送信時のURLと合わせて Canvas に渡します。Canvas の `sourceDetail` は「MedLead」。
-- 週次レポート・ダッシュボードは `canvi-lp-analytics/lib/ga4.cjs` のホスト対応表で判定します（`medical-rpo.canvi.co.jp` と `medlead-lp.vercel.app`）。
+- 週次レポート・ダッシュボードは `canvi-lp-analytics/lib/ga4.cjs` のホスト対応表で判定します（`medlead.canvi.co.jp`、旧URLの `medical-rpo.canvi.co.jp`、`medlead-lp.vercel.app`）。
 - `js/lp-analytics.js` と `api/_lib/lp-leads.cjs` は `../canvi-lp-analytics/shared/` の正本を `npm run sync` でコピーしたものです。
 
-## 本番DNS（STUDIO → Vercel の切り替え）
+## 本番URL（medical-rpo → medlead への変更、2026-11-21）
+
+本番URLは `https://medlead.canvi.co.jp/`。旧URL `medical-rpo.canvi.co.jp` は DNS・Vercel のドメインとも残し、新URLへ308転送する（広告・ブックマーク・検索結果からの流入を落とさないため。パスとUTMは引き継がれる）。
+
+お名前.com で次の2件を追加する（既存レコードは消さない）。
+
+| 操作 | TYPE | ホスト名 | 値 |
+| --- | --- | --- | --- |
+| 追加 | CNAME | `medlead` | `f1b632a46af70511.vercel-dns-016.com` |
+| 追加 | TXT | `_vercel` | `vc-domain-verify=medlead.canvi.co.jp,81c15ed2e024bad97cfa` |
+
+新URLが HTTPS で表示できてから、次の順に切り替える。
+
+1. このリポジトリ・canvi-lp-analytics・canvi-hp のマージ（canonical・OGP・sitemap・集計・HPのリンク）
+2. Vercel の Domains で `medical-rpo.canvi.co.jp` と `medlead-lp.vercel.app` を `medlead.canvi.co.jp` へ308転送にする
+3. Search Console で新URLの `sitemap.xml` を送信
+
+## 本番DNS（STUDIO → Vercel の切り替え、2026-11-20 済み）
 
 管理先はお名前.com。Vercel プロジェクト `medlead-lp` にドメイン追加済み（2026-11-20）。
-本番デプロイ（このリポジトリと canvi-lp-analytics のマージ）が済んでから、次のとおり変更する（TTLは3600）。
+本番デプロイ（このリポジトリと canvi-lp-analytics のマージ）が済んでから、次のとおり変更した（TTLは3600）。
 
 | 操作 | TYPE | ホスト名 | 値 |
 | --- | --- | --- | --- |

@@ -8,7 +8,7 @@ const BODY = {
   tel: '０３ー１２３４ー５６７８', timing: '3ヶ月以内に採用したい', message: '看護師の採用について相談したい',
   agree: 'on', _hp: '', form: 'contact',
   utm_source: 'google', utm_medium: 'cpc', utm_campaign: 'test',
-  page_url: 'https://medical-rpo.canvi.co.jp/?utm_source=google', landing_path: '/'
+  page_url: 'https://medlead.canvi.co.jp/?utm_source=google', landing_path: '/'
 };
 
 function setup(t, overrides = {}, fail = '') {

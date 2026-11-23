@@ -27,6 +27,7 @@ const LP_LABELS = {
   byosoku_mendan: '秒速面談',
   ai_apo_boost: 'AIアポブースト',
   medlead: 'MedLead',
+  fast_call: '秒速架電',
   canvi_hp: 'Canvi コーポレートサイト'
 };
 
